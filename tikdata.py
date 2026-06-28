@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -11,390 +10,345 @@ import re
 import urllib.parse
 from bs4 import BeautifulSoup
 
-# ============= COLOR SYSTEM =============
-class Colors:
-    HEADER = '\033[95m'
-    BLUE = '\033[94m'
-    CYAN = '\033[96m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    WHITE = '\033[97m'
-    BOLD = '\033[1m'
-    DIM = '\033[2m'
-    RESET = '\033[0m'
+# ==================== COLORS ====================
+R = '\033[91m'
+G = '\033[92m'
+Y = '\033[93m'
+B = '\033[94m'
+C = '\033[96m'
+M = '\033[95m'
+W = '\033[97m'
+N = '\033[0m'
 
-# ============= TERMINAL UTILITIES =============
+# ==================== FUNCTIONS ====================
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
 
-def get_width():
-    try:
-        return os.get_terminal_size().columns
-    except:
-        return 80
-
-def center(text, width=None):
-    if width is None:
-        width = get_width()
-    padding = max(0, (width - len(text)) // 2)
-    return ' ' * padding + text
-
-# ============= ANIMATIONS =============
-def loading(text="Processing", duration=1.5):
-    frames = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
-    end = time.time() + duration
+def loading(text, sec=1.5):
+    frames = ['⣾','⣽','⣻','⢿','⡿','⣟','⣯','⣷']
+    end = time.time() + sec
     i = 0
     while time.time() < end:
-        sys.stdout.write(f'\r{Colors.CYAN}{frames[i % len(frames)]} {text}...{Colors.RESET}')
+        sys.stdout.write(f'\r{C}{frames[i%8]} {text}...{N}')
         sys.stdout.flush()
         time.sleep(0.08)
         i += 1
-    sys.stdout.write('\r' + ' ' * 50 + '\r')
-    sys.stdout.flush()
+    sys.stdout.write('\r' + ' '*50 + '\r')
 
-def matrix_effect(duration=1.5):
+def matrix(sec=1.2):
     chars = "⣿⣶⣤⣀⣠⣴⣶⣿"
-    end = time.time() + duration
+    end = time.time() + sec
     while time.time() < end:
         line = ''.join(random.choice(chars) for _ in range(40))
-        sys.stdout.write(f'\r{Colors.GREEN}{line}{Colors.RESET}')
+        sys.stdout.write(f'\r{G}{line}{N}')
         sys.stdout.flush()
-        time.sleep(0.05)
-    sys.stdout.write('\r' + ' ' * 50 + '\r')
-    sys.stdout.flush()
+        time.sleep(0.04)
+    sys.stdout.write('\r' + ' '*50 + '\r')
 
-def box(text, color=Colors.CYAN):
-    width = min(get_width(), 60)
-    print(f"{color}┌{'─' * (width-2)}┐{Colors.RESET}")
-    print(f"{color}│ {text[:width-4]:<{width-4}} │{Colors.RESET}")
-    print(f"{color}└{'─' * (width-2)}┘{Colors.RESET}")
+def box(txt, col=G):
+    w = 50
+    print(f"{col}┌{'─'*(w-2)}┐{N}")
+    print(f"{col}│ {txt[:48]:<48} │{N}")
+    print(f"{col}└{'─'*(w-2)}┘{N}")
 
-# ============= BANNER =============
-def show_banner():
+# ==================== BANNER ====================
+def banner():
     clear()
-    matrix_effect(0.8)
+    matrix()
+    print(f"""
+{C}╔══════════════════════════════════════════════════════════════╗
+{C}║{W}  ████████╗██╗  ██╗██╗  ████████╗ ██████╗ ██╗  ██╗{C} ║
+{C}║{W}  ╚══██╔══╝██║  ██║██║  ╚══██╔══╝██╔═══██╗██║ ██╔╝{C} ║
+{C}║{W}     ██║   ███████║██║     ██║   ██║   ██║█████╔╝ {C} ║
+{C}║{W}     ██║   ██╔══██║██║     ██║   ██║   ██║██╔═██╗ {C} ║
+{C}║{W}     ██║   ██║  ██║██║     ██║   ╚██████╔╝██║  ██╗{C} ║
+{C}║{W}     ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝    ╚═════╝ ╚═╝  ╚═╝{C} ║
+{C}╠══════════════════════════════════════════════════════════════╣
+{C}║{Y}        TikTok Data Toolkit v3.0{C}                         ║
+{C}║{M}     ⚡ by ᴀꜱɪꜰ ɪꜱʟᴀᴍ ⚡{C}                           ║
+{C}╚══════════════════════════════════════════════════════════════╝{N}
+""")
+
+def menu():
+    print(f"""
+{G}┌────────────────────────────────────────────────────────┐
+{G}│{W}  ┌──────────────────────────────────────────┐  {G}│
+{G}│{W}  │{C}  1{W}  ›  {Y}User Lookup{W}              {C}👤{W}  │  {G}│
+{G}│{W}  │{C}  2{W}  ›  {Y}Bulk Scraper{W}              {C}📊{W}  │  {G}│
+{G}│{W}  │{C}  3{W}  ›  {Y}Exit{W}                       {C}🚪{W}  │  {G}│
+{G}│{W}  └──────────────────────────────────────────┘  {G}│
+{G}└────────────────────────────────────────────────────────┘{N}
+""")
+
+# ==================== MAIN SCRAPER ====================
+def get_info(user):
+    if user.startswith('@'):
+        user = user[1:]
     
-    banner = f"""
-{Colors.CYAN}╔══════════════════════════════════════════════════════════════╗
-{Colors.CYAN}║{Colors.WHITE}  ████████╗██╗  ██╗██╗  ████████╗ ██████╗ ██╗  ██╗{Colors.CYAN} ║
-{Colors.CYAN}║{Colors.WHITE}  ╚══██╔══╝██║  ██║██║  ╚══██╔══╝██╔═══██╗██║ ██╔╝{Colors.CYAN} ║
-{Colors.CYAN}║{Colors.WHITE}     ██║   ███████║██║     ██║   ██║   ██║█████╔╝ {Colors.CYAN} ║
-{Colors.CYAN}║{Colors.WHITE}     ██║   ██╔══██║██║     ██║   ██║   ██║██╔═██╗ {Colors.CYAN} ║
-{Colors.CYAN}║{Colors.WHITE}     ██║   ██║  ██║██║     ██║   ╚██████╔╝██║  ██╗{Colors.CYAN} ║
-{Colors.CYAN}║{Colors.WHITE}     ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝    ╚═════╝ ╚═╝  ╚═╝{Colors.CYAN} ║
-{Colors.CYAN}╠══════════════════════════════════════════════════════════════╣
-{Colors.CYAN}║{Colors.YELLOW}        TikTok Data Toolkit v3.0{Colors.CYAN}                         ║
-{Colors.CYAN}║{Colors.MAGENTA}     ⚡ by ᴀꜱɪꜰ ɪꜱʟᴀᴍ ⚡{Colors.CYAN}                           ║
-{Colors.CYAN}╚══════════════════════════════════════════════════════════════╝{Colors.RESET}
-"""
-    print(banner)
-
-# ============= MENU =============
-def show_menu():
-    menu = f"""
-{Colors.GREEN}┌────────────────────────────────────────────────────────┐
-{Colors.GREEN}│{Colors.WHITE}  ┌──────────────────────────────────────────┐  {Colors.GREEN}│
-{Colors.GREEN}│{Colors.WHITE}  │{Colors.CYAN}  1{Colors.WHITE}  ›  {Colors.YELLOW}User Lookup{Colors.WHITE}              {Colors.CYAN}👤{Colors.WHITE}  │  {Colors.GREEN}│
-{Colors.GREEN}│{Colors.WHITE}  │{Colors.CYAN}  2{Colors.WHITE}  ›  {Colors.YELLOW}Bulk Scraper{Colors.WHITE}              {Colors.CYAN}📊{Colors.WHITE}  │  {Colors.GREEN}│
-{Colors.GREEN}│{Colors.WHITE}  │{Colors.CYAN}  3{Colors.WHITE}  ›  {Colors.YELLOW}Exit{Colors.WHITE}                       {Colors.CYAN}🚪{Colors.WHITE}  │  {Colors.GREEN}│
-{Colors.GREEN}│{Colors.WHITE}  └──────────────────────────────────────────┘  {Colors.GREEN}│
-{Colors.GREEN}└────────────────────────────────────────────────────────┘{Colors.RESET}
-"""
-    print(menu)
-
-# ============= YOUR ORIGINAL FUNCTION =============
-def get_user_info(identifier, by_id=False):
-    if by_id:
-        url = f"https://www.tiktok.com/@{identifier}"
-    else:
-        if identifier.startswith('@'):
-            identifier = identifier[1:]
-        url = f"https://www.tiktok.com/@{identifier}"
-
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-
+    url = f"https://www.tiktok.com/@{user}"
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    
     try:
-        response = requests.get(url, headers=headers, timeout=15)
+        r = requests.get(url, headers=headers, timeout=15)
     except:
         return None
-
-    if response.status_code == 200:
-        html_content = response.text
-        
-        try:
-            soup = BeautifulSoup(html_content, 'lxml')
-        except:
-            soup = BeautifulSoup(html_content, 'html.parser')
-        
-        patterns = {
-            'user_id': r'"webapp.user-detail":{"userInfo":{"user":{"id":"(\d+)"',
-            'unique_id': r'"uniqueId":"(.*?)"',
-            'nickname': r'"nickname":"(.*?)"',
-            'followers': r'"followerCount":(\d+)',
-            'following': r'"followingCount":(\d+)',
-            'likes': r'"heartCount":(\d+)',
-            'videos': r'"videoCount":(\d+)',
-            'signature': r'"signature":"(.*?)"',
-            'verified': r'"verified":(true|false)',
-            'secUid': r'"secUid":"(.*?)"',
-            'commentSetting': r'"commentSetting":(\d+)',
-            'privateAccount': r'"privateAccount":(true|false)',
-            'region': r'"ttSeller":false,"region":"([^"]*)"',
-            'heart': r'"heart":(\d+)',
-            'diggCount': r'"diggCount":(\d+)',
-            'friendCount': r'"friendCount":(\d+)',
-            'profile_pic': r'"avatarLarger":"(.*?)"'
-        }
-        
-        info = {}
-        for key, pattern in patterns.items():
-            match = re.search(pattern, html_content)
-            info[key] = match.group(1) if match else None
-        
-        if "profile_pic" in info and info['profile_pic']:
-            info['profile_pic'] = info['profile_pic'].replace('\\u002F', '/')
-        
-        social_links = []
-        bio = info.get('signature') or ""
-        
-        bio_link_pattern = r'"bioLink":{"link":"([^"]+)","risk":(\d+)}'
-        for link, risk in re.findall(bio_link_pattern, html_content):
-            clean = link.replace('\\u002F', '/')
-            if clean not in social_links:
-                social_links.append(clean)
-        
-        for span in re.findall(r'<span[^>]*class="[^"]*SpanLink[^"]*">([^<]+)</span>', html_content):
-            if '.' in span and ' ' not in span and span not in social_links:
-                social_links.append(span)
-        
-        ig = re.search(r'[iI][gG]:\s*@?([a-zA-Z0-9._]+)', bio)
-        if ig:
-            social_links.append(f"📸 IG: @{ig.group(1)}")
-        
-        yt = re.search(r'([yY][tT]|[yY]outube):\s*@?([a-zA-Z0-9._]+)', bio)
-        if yt:
-            social_links.append(f"▶️ YT: @{yt.group(2)}")
-        
-        tw = re.search(r'([tT]witter|[xX]):\s*@?([a-zA-Z0-9._]+)', bio)
-        if tw:
-            social_links.append(f"🐦 X: @{tw.group(2)}")
-        
-        email = re.search(r'[\w.+-]+@[\w-]+\.[\w.-]+', bio)
-        if email:
-            social_links.append(f"✉️ {email.group(0)}")
-        
-        info['social_links'] = social_links
-        return info
-    else:
+    
+    if r.status_code != 200:
         return None
+    
+    html = r.text
+    
+    patterns = {
+        'id': r'"id":"(\d+)"',
+        'user': r'"uniqueId":"(.*?)"',
+        'name': r'"nickname":"(.*?)"',
+        'followers': r'"followerCount":(\d+)',
+        'following': r'"followingCount":(\d+)',
+        'likes': r'"heartCount":(\d+)',
+        'videos': r'"videoCount":(\d+)',
+        'bio': r'"signature":"(.*?)"',
+        'verified': r'"verified":(true|false)',
+        'private': r'"privateAccount":(true|false)',
+        'region': r'"region":"([^"]*)"',
+        'pic': r'"avatarLarger":"(.*?)"'
+    }
+    
+    info = {}
+    for k, p in patterns.items():
+        m = re.search(p, html)
+        info[k] = m.group(1) if m else None
+    
+    if info.get('pic'):
+        info['pic'] = info['pic'].replace('\\u002F', '/')
+    
+    # Social links
+    links = []
+    bio = info.get('bio') or ''
+    
+    # Bio links
+    for link in re.findall(r'"bioLink":{"link":"([^"]+)"', html):
+        clean = link.replace('\\u002F', '/')
+        if clean not in links:
+            links.append(clean)
+    
+    # Span links
+    for span in re.findall(r'<span[^>]*class="[^"]*SpanLink[^"]*">([^<]+)</span>', html):
+        if '.' in span and ' ' not in span and span not in links:
+            links.append(span)
+    
+    # Instagram
+    ig = re.search(r'[iI][gG]:\s*@?([a-zA-Z0-9._]+)', bio)
+    if ig:
+        links.append(f"📸 IG: @{ig.group(1)}")
+    
+    # YouTube
+    yt = re.search(r'([yY][tT]|[yY]outube):\s*@?([a-zA-Z0-9._]+)', bio)
+    if yt:
+        links.append(f"▶️ YT: @{yt.group(2)}")
+    
+    # Twitter/X
+    tw = re.search(r'([tT]witter|[xX]):\s*@?([a-zA-Z0-9._]+)', bio)
+    if tw:
+        links.append(f"🐦 X: @{tw.group(2)}")
+    
+    # Email
+    em = re.search(r'[\w.+-]+@[\w-]+\.[\w.-]+', bio)
+    if em:
+        links.append(f"✉️ {em.group(0)}")
+    
+    info['links'] = links
+    return info
 
-# ============= DISPLAY FUNCTIONS =============
-def display_user(info):
+# ==================== DISPLAY ====================
+def show_info(info):
     if not info:
-        box("✗ No data found", Colors.RED)
+        box("✗ No data found", R)
         return
     
-    width = min(get_width(), 60)
+    print(f"\n{G}╔{'═'*48}╗{N}")
+    print(f"{G}║{W}  📊 PROFILE DATA{G}{' '*34}║{N}")
+    print(f"{G}╚{'═'*48}╝{N}\n")
     
-    print(f"\n{Colors.GREEN}╔{'═' * (width-2)}╗{Colors.RESET}")
-    print(f"{Colors.GREEN}║{Colors.WHITE}  📊 PROFILE DATA{Colors.GREEN}{' ' * (width-18)}║{Colors.RESET}")
-    print(f"{Colors.GREEN}╚{'═' * (width-2)}╝{Colors.RESET}\n")
-    
-    print(f"{Colors.CYAN}┌{'─' * (width-2)}┐{Colors.RESET}")
-    print(f"{Colors.CYAN}│{Colors.YELLOW}  BASIC INFO{Colors.CYAN}{' ' * (width-15)}│{Colors.RESET}")
-    print(f"{Colors.CYAN}├{'─' * (width-2)}┤{Colors.RESET}")
+    print(f"{C}┌{'─'*48}┐{N}")
+    print(f"{C}│{Y}  BASIC INFO{C}{' '*36}│{N}")
+    print(f"{C}├{'─'*48}┤{N}")
     
     fields = [
-        ('ID', info.get('user_id')),
-        ('User', f"@{info.get('unique_id')}"),
-        ('Name', info.get('nickname')),
-        ('Verified', '✅' if info.get('verified') == 'true' else '❌'),
-        ('Private', '🔒' if info.get('privateAccount') == 'true' else '🔓'),
+        ('ID', info.get('id')),
+        ('User', f"@{info.get('user')}"),
+        ('Name', info.get('name')),
+        ('Verified', '✅' if info.get('verified')=='true' else '❌'),
+        ('Private', '🔒' if info.get('private')=='true' else '🔓'),
         ('Region', info.get('region'))
     ]
     
-    for label, value in fields:
-        if value:
-            val = str(value)[:30]
-            print(f"{Colors.CYAN}│ {Colors.WHITE}{label:<6}{Colors.CYAN}: {Colors.GREEN}{val:<{width-12}}{Colors.CYAN}│{Colors.RESET}")
+    for label, val in fields:
+        if val:
+            v = str(val)[:30]
+            print(f"{C}│ {W}{label:<6}{C}: {G}{v:<40}{C}│{N}")
     
-    print(f"{Colors.CYAN}└{'─' * (width-2)}┘{Colors.RESET}\n")
+    print(f"{C}└{'─'*48}┘{N}\n")
     
-    print(f"{Colors.CYAN}┌{'─' * (width-2)}┐{Colors.RESET}")
-    print(f"{Colors.CYAN}│{Colors.YELLOW}  STATS{Colors.CYAN}{' ' * (width-11)}│{Colors.RESET}")
-    print(f"{Colors.CYAN}├{'─' * (width-2)}┤{Colors.RESET}")
+    print(f"{C}┌{'─'*48}┐{N}")
+    print(f"{C}│{Y}  STATS{C}{' '*40}│{N}")
+    print(f"{C}├{'─'*48}┤{N}")
     
     stats = [
         ('👥 Followers', info.get('followers')),
         ('👤 Following', info.get('following')),
         ('❤️ Likes', info.get('likes')),
-        ('🎬 Videos', info.get('videos')),
-        ('🤝 Friends', info.get('friendCount'))
+        ('🎬 Videos', info.get('videos'))
     ]
     
-    for label, value in stats:
-        if value:
-            print(f"{Colors.CYAN}│ {Colors.WHITE}{label:<12}{Colors.CYAN}: {Colors.GREEN}{value:>10}{Colors.CYAN}  │{Colors.RESET}")
+    for label, val in stats:
+        if val:
+            print(f"{C}│ {W}{label:<12}{C}: {G}{str(val):>10}{C}  │{N}")
     
-    print(f"{Colors.CYAN}└{'─' * (width-2)}┘{Colors.RESET}\n")
+    print(f"{C}└{'─'*48}┘{N}\n")
     
-    bio = info.get('signature')
+    bio = info.get('bio')
     if bio and bio != 'No signature found':
-        print(f"{Colors.CYAN}┌{'─' * (width-2)}┐{Colors.RESET}")
-        print(f"{Colors.CYAN}│{Colors.YELLOW}  BIO{Colors.CYAN}{' ' * (width-9)}│{Colors.RESET}")
-        print(f"{Colors.CYAN}├{'─' * (width-2)}┤{Colors.RESET}")
-        bio_clean = bio.replace('\\n', ' ').replace('\\r', '')
-        if len(bio_clean) > width-6:
-            bio_clean = bio_clean[:width-9] + '...'
-        print(f"{Colors.CYAN}│ {Colors.WHITE}{bio_clean:<{width-4}} │{Colors.RESET}")
-        print(f"{Colors.CYAN}└{'─' * (width-2)}┘{Colors.RESET}\n")
+        print(f"{C}┌{'─'*48}┐{N}")
+        print(f"{C}│{Y}  BIO{C}{' '*44}│{N}")
+        print(f"{C}├{'─'*48}┤{N}")
+        b = bio.replace('\\n',' ').replace('\\r','')
+        if len(b) > 42:
+            b = b[:39] + '...'
+        print(f"{C}│ {W}{b:<46} │{N}")
+        print(f"{C}└{'─'*48}┘{N}\n")
     
-    links = info.get('social_links', [])
+    links = info.get('links', [])
     if links:
-        print(f"{Colors.CYAN}┌{'─' * (width-2)}┐{Colors.RESET}")
-        print(f"{Colors.CYAN}│{Colors.YELLOW}  SOCIAL{Colors.CYAN}{' ' * (width-11)}│{Colors.RESET}")
-        print(f"{Colors.CYAN}├{'─' * (width-2)}┤{Colors.RESET}")
+        print(f"{C}┌{'─'*48}┐{N}")
+        print(f"{C}│{Y}  SOCIAL{C}{' '*40}│{N}")
+        print(f"{C}├{'─'*48}┤{N}")
         for link in links[:4]:
-            if len(link) > width-6:
-                link = link[:width-9] + '...'
-            print(f"{Colors.CYAN}│ {Colors.GREEN}•{Colors.WHITE} {link:<{width-6}} │{Colors.RESET}")
-        print(f"{Colors.CYAN}└{'─' * (width-2)}┘{Colors.RESET}")
+            if len(link) > 42:
+                link = link[:39] + '...'
+            print(f"{C}│ {G}•{W} {link:<44} │{N}")
+        print(f"{C}└{'─'*48}┘{N}")
     
-    username = info.get('unique_id')
-    if username:
-        print(f"\n{Colors.CYAN}🔗 {Colors.WHITE}https://www.tiktok.com/@{username}{Colors.RESET}")
+    user = info.get('user')
+    if user:
+        print(f"\n{C}🔗 {W}https://www.tiktok.com/@{user}{N}")
 
-def download_pp(url, username):
+def download_pic(url, user):
     if not url or not url.startswith('http'):
-        box("No profile picture URL", Colors.YELLOW)
+        box("No profile picture", Y)
         return
     
     try:
         if not os.path.exists('pp_images'):
             os.makedirs('pp_images')
         
-        loading("Downloading picture", 1.5)
+        loading("Downloading", 1.5)
+        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=10)
         
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        resp = requests.get(url, headers=headers, timeout=10)
-        
-        if resp.status_code == 200:
-            fname = f"pp_images/{username}.jpg"
+        if r.status_code == 200:
+            fname = f"pp_images/{user}.jpg"
             with open(fname, 'wb') as f:
-                f.write(resp.content)
-            size = len(resp.content) / 1024
-            box(f"✓ Saved: {fname} ({size:.1f}KB)", Colors.GREEN)
+                f.write(r.content)
+            size = len(r.content)/1024
+            box(f"✓ Saved: {fname} ({size:.1f}KB)", G)
         else:
-            box("✗ Download failed", Colors.RED)
+            box("✗ Download failed", R)
     except Exception as e:
-        box(f"✗ Error: {str(e)[:30]}", Colors.RED)
+        box(f"✗ Error: {str(e)[:30]}", R)
 
-# ============= BULK SCRAPER =============
-def bulk_scraper():
-    width = min(get_width(), 60)
+# ==================== BULK ====================
+def bulk():
+    print(f"\n{C}╔{'═'*48}╗{N}")
+    print(f"{C}║{Y}  📊 BULK SCRAPER{C}{' '*34}║{N}")
+    print(f"{C}╚{'═'*48}╝{N}")
     
-    print(f"\n{Colors.CYAN}╔{'═' * (width-2)}╗{Colors.RESET}")
-    print(f"{Colors.CYAN}║{Colors.YELLOW}  📊 BULK SCRAPER{Colors.CYAN}{' ' * (width-18)}║{Colors.RESET}")
-    print(f"{Colors.CYAN}╚{'═' * (width-2)}╝{Colors.RESET}")
-    
-    print(f"\n{Colors.WHITE}Enter usernames (blank line to finish):{Colors.RESET}")
-    
+    print(f"\n{W}Enter usernames (blank line to finish):{N}")
     users = []
     while True:
-        line = input(f"{Colors.CYAN}> {Colors.WHITE}")
+        line = input(f"{C}> {W}")
         if not line and users:
             break
         if line:
             users.append(line.strip())
     
     if not users:
-        box("No usernames entered", Colors.YELLOW)
+        box("No usernames", Y)
         return
     
-    print(f"\n{Colors.WHITE}Processing {len(users)} users...{Colors.RESET}\n")
-    
+    print(f"\n{W}Processing {len(users)} users...{N}\n")
     results = []
+    
     for i, user in enumerate(users, 1):
-        print(f"{Colors.CYAN}[{i}/{len(users)}]{Colors.WHITE} @{user}{Colors.RESET}")
-        info = get_user_info(user)
+        print(f"{C}[{i}/{len(users)}]{W} @{user}{N}")
+        info = get_info(user)
         if info:
             results.append(info)
-            print(f"{Colors.GREEN}  ✓ Success{Colors.RESET}")
+            print(f"{G}  ✓ Success{N}")
         else:
-            print(f"{Colors.RED}  ✗ Failed{Colors.RESET}")
+            print(f"{R}  ✗ Failed{N}")
         time.sleep(0.3)
     
     if results:
         fname = f"bulk_{int(time.time())}.json"
         with open(fname, 'w') as f:
             json.dump(results, f, indent=2)
-        print(f"\n{Colors.GREEN}✓ Saved: {fname}{Colors.RESET}")
+        print(f"\n{G}✓ Saved: {fname}{N}")
     
-    print(f"\n{Colors.CYAN}✓ {len(results)}/{len(users)} successful{Colors.RESET}")
+    print(f"\n{C}✓ {len(results)}/{len(users)} successful{N}")
 
-# ============= MAIN =============
+# ==================== MAIN ====================
 def main():
     while True:
         try:
-            show_banner()
-            show_menu()
-            
-            choice = input(f"\n{Colors.CYAN}┌─{Colors.WHITE}[{Colors.GREEN}Select{Colors.WHITE}]{Colors.CYAN}\n└──╼ {Colors.WHITE}")
+            banner()
+            menu()
+            choice = input(f"\n{C}┌─{W}[{G}Select{W}]{C}\n└──╼ {W}")
             
             if choice == '1':
-                show_banner()
+                banner()
+                print(f"\n{C}┌{'─'*40}┐{N}")
+                print(f"{C}│{Y}  USER LOOKUP{C}{' '*27}│{N}")
+                print(f"{C}└{'─'*40}┘{N}")
                 
-                print(f"\n{Colors.CYAN}┌{'─' * 40}┐{Colors.RESET}")
-                print(f"{Colors.CYAN}│{Colors.YELLOW}  USER LOOKUP{Colors.CYAN}{' ' * 27}│{Colors.RESET}")
-                print(f"{Colors.CYAN}└{'─' * 40}┘{Colors.RESET}")
-                
-                user = input(f"\n{Colors.WHITE}Username: {Colors.CYAN}").strip()
-                
+                user = input(f"\n{W}Username: {C}").strip()
                 if user:
                     loading(f"Fetching @{user}", 2)
-                    info = get_user_info(user)
-                    
+                    info = get_info(user)
                     if info:
-                        display_user(info)
-                        
-                        print(f"\n{Colors.YELLOW}Download profile pic? (y/n): {Colors.WHITE}")
+                        show_info(info)
+                        print(f"\n{Y}Download profile pic? (y/n): {W}")
                         if input().lower() == 'y':
-                            download_pp(info.get('profile_pic'), info.get('unique_id') or user)
-                        
-                        input(f"\n{Colors.DIM}Press Enter to continue...{Colors.RESET}")
+                            download_pic(info.get('pic'), info.get('user') or user)
+                        input(f"\n{DIM}Press Enter...{N}")
                     else:
-                        box("✗ No data found", Colors.RED)
-                        input(f"\n{Colors.DIM}Press Enter...{Colors.RESET}")
+                        box("✗ No data found", R)
+                        input(f"\n{DIM}Press Enter...{N}")
                 else:
-                    box("✗ No username", Colors.YELLOW)
-                    input(f"\n{Colors.DIM}Press Enter...{Colors.RESET}")
+                    box("✗ No username", Y)
+                    input(f"\n{DIM}Press Enter...{N}")
             
             elif choice == '2':
-                show_banner()
-                bulk_scraper()
-                input(f"\n{Colors.DIM}Press Enter...{Colors.RESET}")
+                banner()
+                bulk()
+                input(f"\n{DIM}Press Enter...{N}")
             
             elif choice == '3':
-                print(f"\n{Colors.CYAN}╔{'═' * 40}╗{Colors.RESET}")
-                print(f"{Colors.CYAN}║{Colors.YELLOW}  👋 Goodbye!{Colors.CYAN}{' ' * 28}║{Colors.RESET}")
-                print(f"{Colors.CYAN}║{Colors.MAGENTA}  by ᴀꜱɪꜰ ɪꜱʟᴀᴍ{Colors.CYAN}{' ' * 23}║{Colors.RESET}")
-                print(f"{Colors.CYAN}╚{'═' * 40}╝{Colors.RESET}")
+                print(f"\n{C}╔{'═'*40}╗{N}")
+                print(f"{C}║{Y}  👋 Goodbye!{C}{' '*28}║{N}")
+                print(f"{C}║{M}  by ᴀꜱɪꜰ ɪꜱʟᴀᴍ{C}{' '*23}║{N}")
+                print(f"{C}╚{'═'*40}╝{N}")
                 loading("Exiting", 1)
                 sys.exit(0)
             
             else:
-                box("✗ Invalid option", Colors.RED)
-                input(f"\n{Colors.DIM}Press Enter...{Colors.RESET}")
+                box("✗ Invalid option", R)
+                input(f"\n{DIM}Press Enter...{N}")
         
         except KeyboardInterrupt:
-            print(f"\n\n{Colors.YELLOW}⚠ Interrupted{Colors.RESET}")
+            print(f"\n\n{Y}⚠ Interrupted{N}")
             sys.exit(0)
         except Exception as e:
-            box(f"✗ Error: {str(e)[:30]}", Colors.RED)
-            input(f"\n{Colors.DIM}Press Enter...{Colors.RESET}")
+            box(f"✗ Error: {str(e)[:30]}", R)
+            input(f"\n{DIM}Press Enter...{N}")
 
 if __name__ == "__main__":
     main()
